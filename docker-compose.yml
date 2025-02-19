@@ -1,0 +1,73 @@
+# Database
+services:
+  db:
+    image: mysql:5.7
+    container_name: mysql_db
+    #restart: always
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: bitnami
+      MYSQL_DATABASE: bitnami_wordpress
+      MYSQL_USER: bn_wordpress #usuario para phpmyadmin
+      MYSQL_PASSWORD: bitnami #password para phpmyadmin
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 2
+      start_period: 0s
+#WordPress
+  wordpress:
+    env_file: ".env"
+    image: bitnami/wordpress:latest
+    container_name: wordpress_site
+    #restart: always
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "80:8080" # Acceder al sitio web con HTTP
+      - "443:8080" # Acceder al sitio web con HTTPS
+      # "puerto del host : puerto del contenedor"
+    environment:
+      WORDPRESS_DATABASE_HOST: ${WORDPRESS_DATABASE_HOST}
+      WORDPRESS_DATABASE_USER: ${WORDPRESS_DATABASE_USER}
+      WORDPRESS_DATABASE_PASSWORD: ${WORDPRESS_DATABASE_PASSWORD}
+      WORDPRESS_DATABASE_NAME: ${WORDPRESS_DATABASE_NAME}
+      WORDPRESS_BLOG_NAME: ${WORDPRESS_BLOG_NAME}
+      WORDPRESS_USERNAME: ${WORDPRESS_USERNAME}
+      WORDPRESS_PASSWORD: ${WORDPRESS_PASSWORD}
+      WORDPRESS_EMAIL: ${WORDPRESS_EMAIL}
+    volumes:
+      - wordpress_data:/bitnami/wordpress
+    networks:
+      - frontend-network
+      - backend-network
+#PhpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    #restart: always
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      # MYSQL_ROOT_PASSWORD: ${WORDPRESS_DATABASE_PASSWORD}
+    networks:
+      - frontend-network
+      - backend-network
+networks:
+  frontend-network:
+  backend-network:
+
+volumes:
+  db_data:
+  wordpress_data:
